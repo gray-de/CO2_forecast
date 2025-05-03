@@ -1,41 +1,46 @@
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
-from skforecast.ForecasterAutoreg import ForecasterAutoreg
-from skforecast.model_selection import backtesting_forecaster
-from skforecast.model_selection import grid_search_forecaster
 import plotly.express as px
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
+import matplotlib.pyplot as plt
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import plotly.graph_objects as go
 
 data = pd.read_csv('public_data.csv')
-data['date'] = pd.to_datetime(data['date']) # Приводим дату в тип pandas
-
-# Задаем обучающие данные
-# Обычно предсказание нужно с определенного момента, которое уточняется с заказчиком
-# Тут используем обычную hold-out валидацию
-train = data.iloc[:-int(len(data) * 0.2)]
-test = data.iloc[-int(len(data) * 0.2):]
-# Отрисуем данные
+data['date'] = pd.to_datetime(data['date'])
+data.index = range(1,len(data)+1)
+# print(data)
 def plot_country_volumes(df: pd.DataFrame, y: str):
     fig = px.line(df, x='date', y=y, labels={'date': 'Date'})
     fig.update_layout(template="simple_white", font=dict(size=18), title_text='CO2',
-                      width=1650, title_x=0.5, height=400)
+                      width=1750, title_x=0.5, height=400)
 
     return fig.show()
-linear_forecaster = ForecasterAutoreg(
-    regressor=LinearRegression(),
-    lags=12
-)
 
-# Обучаем модель
-linear_forecaster.fit(train)
+# plot_country_volumes(data, "Brazil")
+model = SARIMAX(data['Brazil'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+model_fit = model.fit()
+# print(model_fit.summary())
 
-# Строим прогноз
-predictions = linear_forecaster.predict(len(train))
+# Прогноз на основе обученной модели
+forecast = model_fit.forecast(steps=30)
 
-# Печатаем метрики
-print(f"MAPE = {mean_absolute_percentage_error(train, predictions)}")
-print(f"MAE = {mean_absolute_error(train, predictions)}")
-print(f"MSE = {mean_squared_error(train, predictions)}")
+# Рассчитываем MSE и MAE
+mse = mean_squared_error(data['Brazil'][-30:], forecast)
+mae = mean_absolute_error(data['Brazil'][-30:], forecast)
+
+print(f'MSE: {mse}')
+print(f'MAE: {mae}')
+
+forecast_future = model_fit.get_forecast(steps=31)
+
+
+# Создаем новый DataFrame для будущих значений
+future_dates = pd.date_range(start='2023-04-30', periods=31, freq='D') + pd.DateOffset(days=1)
+forecast_df = pd.DataFrame({'date': future_dates, 'Brazil': forecast_future.predicted_mean})
+# print(forecast_df)
+
+
+# Присоединяем прогноз к исходному DataFrame
+new_df = pd.concat([data, forecast_df])
+print(new_df)
+plot_country_volumes(new_df, 'Brazil')
