@@ -53,4 +53,7 @@ res = final_dfs[0]
 for i in range(len(data.columns)-2):
     combined_df = pd.merge(res, final_dfs[i+1], on = 'date')
     res = combined_df
-print(res)
+res = res.reset_index(drop=True)
+res.index += 1583
+result = pd.concat([data, res])
+result.to_csv('output.csv', index=False)
