@@ -17,13 +17,13 @@ def plot_country_volumes(df: pd.DataFrame, y: str):
 
     return fig.show()
 
-# plot_country_volumes(data, "Brazil")
+
 
 for i in data.columns[1:]:
     model = SARIMAX(data[i][:-30], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
     model_fit = model.fit()
     # print(model_fit.summary())
-
+    # plot_country_volumes(data, i)
     # Прогноз на основе обученной модели
     forecast = model_fit.forecast(steps=30)
 
@@ -34,17 +34,16 @@ for i in data.columns[1:]:
     print(f'MSE: {mse}')
     print(f'MAE: {mae}')
 
-    forecast_future = model_fit.get_forecast(steps=31)
+    forecast_future = model_fit.forecast(steps=31)
 
 
     # Создаем новый DataFrame для будущих значений
-    future_dates = pd.date_range(start='2023-04-30', periods=31, freq='D') + pd.DateOffset(days=1)
-    forecast_df = pd.DataFrame({'date': future_dates, i: forecast_future.predicted_mean})
+    future_dates = pd.date_range(start='2023-05-01', periods=31, freq='D')
+    forecast_df = pd.DataFrame({'date': future_dates, i: forecast_future})
     # print(forecast_df)
 
 
     # Присоединяем прогноз к исходному DataFrame
-    # new_df = pd.concat([data, forecast_df], join = "inner")
     final_dfs.append(forecast_df)
     print(forecast_df)
     # plot_country_volumes(new_df, i)
